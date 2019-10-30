@@ -30,3 +30,21 @@ Remark token_Parser `(EquDec t, Parser i t α p) (cond : α -> bool) : Parser (e
 Proof.
   typeclasses eauto.
 Qed.
+
+Remark optional_Parser `(EquDec t, Parser i t α p) : Parser (optional p).
+
+Proof.
+  typeclasses eauto.
+Qed.
+
+Remark tag_aux_Strict `(EquDec t, Input i t) (x : t) (l : list t) : Parser (tag (x :: l)).
+
+Proof.
+  typeclasses eauto.
+Qed.
+
+Remark tag'_aux_Strict `(EquDec t, Input i t) (x : t) (l : list t) : Parser (tag' (x :: l)).
+
+Proof.
+  typeclasses eauto.
+Qed.

@@ -4,6 +4,14 @@ From Comparse Require Import Monad.
 
 (** ** <<many>> *)
 
+(** [many p] tries to apply a _strict_ parser [p] as long as [p] succeeds, then
+    returns the list of terms constructed by [p].
+
+      - [many p] is never a _strict_ parser. It consumes the input if [p]
+        succeeds at least once.
+      - [many p] never fails. *)
+
+(* begin hide *)
 Function many_aux (i t : Type) (I : Input i t) (α : Type) (p : parser i α) (S : StrictParser p)
     (input : i) (acc : list α) {measure length input}
   : list α * i :=
@@ -16,12 +24,12 @@ Proof.
   intros i t I a p S input acc res x output eqr equ.
   now apply is_strict in equ.
 Defined.
-
+(* end hide *)
 Definition many `{Input i t} {α} (p : parser i α) `{StrictParser i t α p} : parser i (list α) :=
   fun (input : i) => inr (many_aux _ _ _ _ p _ input []).
 
 Instance many_parser `(StrictParser i t α p) : Parser (many p).
-
+(* begin hide *)
 Proof.
   unfold many.
   constructor.
@@ -32,13 +40,28 @@ Proof.
     ++ apply (IHp0 equ).
     ++ now apply is_parser in e.
 Qed.
+(* end hide *)
 
 (** ** <<some>> *)
+
+(** [some p] tries to apply a _strict_ parser [p] at least once, and as long as
+    [p] succeeds, then returns the list of terms constructed by [p]. That is,
+    contrary to [many p], [some p] fails if [p] does not succeed at least once.
+
+      - [some p] is a _strict_ parser.
+      - [some p] fails if [p] does not suceed at least once. *)
 
 Definition some `{Input i t} {α} (p : parser i α) `{StrictParser i t α p} : parser i (list α) :=
   cons <$> p <*> (many p).
 
 (** ** <<alt>> *)
+
+(** [p <|> q] first tries to apply [p] and returns its result if [p]
+    succeeds. Otherwise, it tries to apply [q].
+
+      - [p <|> q] is a _strict_ parser if both [p] and [q] are _strict_. It
+        consumes the same input as [p] or [q] would if applied directly.
+      - [p <|> q] fails if both [p] and [q] fail. *)
 
 Definition alt `{Input i t} {α} (p q : parser i α) : parser i α :=
   fun* input =>
@@ -50,7 +73,7 @@ Definition alt `{Input i t} {α} (p q : parser i α) : parser i α :=
 Infix "<|>" := alt (at level 50, left associativity) : monad_scope.
 
 Instance alt_Parser `(Input i t, !@Parser i t α _ p, !@Parser i t α _  q) : @Parser i t α _ (alt p q).
-
+(* begin hide *)
 Proof.
   unfold alt.
   constructor.
@@ -64,9 +87,10 @@ Proof.
     inversion equ; subst.
     now apply is_parser in equ'.
 Qed.
+(* end hide *)
 
 Instance alt_Strict `(Input i t, !@StrictParser i t α _ p, !@StrictParser i t α _  q) : @StrictParser i t α _ (alt p q).
-
+(* begin hide *)
 Proof.
   unfold alt.
   constructor.
@@ -80,8 +104,16 @@ Proof.
     inversion equ; subst.
     now apply is_strict in equ'.
 Qed.
+(* end hide *)
 
 (** ** <<optional>> *)
+
+(** [optional p] tries to apply [p], but does not fail if [p] fails and just
+    returns [None] instead, leaving the input untouched.
+
+      - [optional p] is _strict_ if [p] is _strict_. It consumes the same [input] as [p] would if applied directly.
+      - [optional p] never fails. *)
+
 
 Definition optional `{Input i t} {α} (p : parser i α) : parser i (option α) :=
   (Some <$> p) <|> pure None.
@@ -89,7 +121,7 @@ Definition optional `{Input i t} {α} (p : parser i α) : parser i (option α) :
 (** ** <<fail>> *)
 
 Definition fail `{Input i t} {α} (msg : string) : parser i α :=
-  fun s => inl (msg :: nil).
+  fun s => inl [msg].
 
 Instance fail_Parser : Parser (@fail i t H α msg).
 
@@ -148,41 +180,52 @@ Fixpoint tag `{EquDec t, Input i t} (x : list t) : parser i unit :=
   end.
 
 Instance tag_parser `(EquDec t, Input i t) (l : list t) : Parser (tag l).
-
+(* begin hide *)
 Proof.
   induction l; typeclasses eauto.
 Qed.
+(* end hide *)
+
+(** [tag' x] is a variant of [tag x] which returns [x] and not [tt]. This can be
+    useful used in conjunction of [<|>]. *)
 
 Definition tag' `{EquDec t, Input i t} (x : list t) : parser i (list t) :=
   tag x *> pure x.
 
 (** ** <<many_until>> *)
 
-Function many_until_aux (a b i t : Type) (I : Input i t)
-    (p : parser i a) (H : StrictParser p) (q : parser i b)
-    (input : i) (acc : list a) {measure length input}
-  : error_stack + (list a * i) :=
+(** [many_until p q] applies the _strict_ parser [p] as long as [q] fails, then
+    returns the list of terms produced by [p].
+
+      - [many_until p q] is a _strict_ parser if _q_ is strict.
+      - [many_until p q] fails if [p] fails before [q] could suceed. *)
+
+(* begin hide *)
+Function many_until_aux (α β i t : Type) (I : Input i t)
+    (p : parser i α) (H : StrictParser p) (q : parser i β)
+    (input : i) (acc : list α) {measure length input}
+  : error_stack + (list α * i) :=
   match q input with
   | inl _ => match p input with
              | inl _ => inl ["p failed before q could succeed"%string]
-             | inr (x, output) => many_until_aux a b i t I p H q output (x :: acc)
+             | inr (x, output) => many_until_aux α β i t I p H q output (x :: acc)
              end
   | inr (_, output) => inr (rev acc, output)
   end.
 
 Proof.
-  intros a b i t I p H q input acc e eque res x output equr equ.
+  intros α b i t I p H q input acc e eque res x output equr equ.
   now apply is_strict in equ.
 Defined.
-
-Definition many_until {a b} `{Input i t} (p : parser i a) `{StrictParser i t a p}
-    (q : parser i b)
-  : parser i (list a) :=
-  fun input => many_until_aux a b i t _ p _ q input [].
+(* end hide *)
+Definition many_until {α β} `{Input i t}
+    (p : parser i α) `{StrictParser i t α p} (q : parser i β)
+  : parser i (list α) :=
+  fun input => many_until_aux _ _ _ _ _ p _ q input [].
 
 Instance many_until_parser `(Input i t, !StrictParser (p : parser i a), !Parser (q : parser i b))
   : Parser (many_until p q).
-
+(* begin hide *)
 Proof.
   constructor.
   intros input x output equ.
@@ -199,15 +242,16 @@ Proof.
   + inversion equ; subst.
     now apply is_parser in e.
 Qed.
+(* end hide *)
 
-Instance many_until_strict `(Input i t, !StrictParser (p : parser i a), !StrictParser (q : parser i b))
+Instance many_until_strict `(Input i t, !StrictParser (p : parser i α), !StrictParser (q : parser i β))
   : StrictParser (many_until p q).
-
+(* begin hide *)
 Proof.
   constructor.
   intros input x output equ.
   unfold many_until in *.
-  functional induction (many_until_aux a b i t _ p _ q input []).
+  functional induction (many_until_aux α β i t _ p _ q input []).
   + discriminate.
   + destruct many_until_aux.
     ++ discriminate.
@@ -219,12 +263,21 @@ Proof.
   + inversion equ; subst.
     now apply is_strict in e.
 Qed.
+(* end hide *)
 
 (** ** <<some_until>> *)
 
-Definition some_until {a b} `{Input i t} (p : parser i a) `{StrictParser i t a p}
-    (q : parser i b)
-  : parser i (list a) :=
+(** [some_until p q] applies the _strict_ parser [p] as long as [q] fails, then
+    returns the list of terms produced by [p]. Contrary to [many_until],
+    [some_until] requires [p] to succeed at least once.
+
+      - [some_until p q] is a _strict_ parser.
+      - [some_until p q] fails [p] does not succeeds at least once, and if [p]
+        fails before [q] could succeed. *)
+
+Definition some_until {α β} `{Input i t}
+    (p : parser i α) `{StrictParser i t α p} (q : parser i β)
+  : parser i (list α) :=
   cons <$> p <*> many_until p q.
 
 (** ** <<sep>> *)

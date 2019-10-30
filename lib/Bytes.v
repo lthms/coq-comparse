@@ -1,15 +1,32 @@
-From Coq Require Import String Byte.
+From Coq Require Export Byte.
 From Prelude Require Import All.
 From Comparse Require Import Monad Combinators.
+
+#[program]
+Instance byte_EquDec : EquDec byte :=
+  { equalb := Byte.eqb
+  }.
+
+Next Obligation.
+  split.
+  + apply Byte.byte_dec_lb.
+  + apply Byte.byte_dec_bl.
+Defined.
 
 Inductive bytes := to_bytes { of_bytes : list byte }.
 Definition id_byte (x : byte) := x.
 
 Declare Scope bytes_scope.
+Delimit Scope bytes_scope with bytes.
 Bind Scope bytes_scope with bytes.
 
-String Notation bytes to_bytes of_bytes : str_scope.
+String Notation bytes to_bytes of_bytes : bytes_scope.
 String Notation byte id_byte id_byte : byte_scope.
+
+Definition append (x y : bytes) :=
+  to_bytes (List.app (of_bytes x) (of_bytes y)).
+
+Infix "++" := append : bytes_scope.
 
 #[program]
 Instance bytes_Input : Input bytes byte :=

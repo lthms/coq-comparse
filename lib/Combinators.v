@@ -226,3 +226,10 @@ Definition some_until {a b} `{Input i t} (p : parser i a) `{StrictParser i t a p
     (q : parser i b)
   : parser i (list a) :=
   cons <$> p <*> many_until p q.
+
+(** ** <<sep>> *)
+
+Definition sep {α β} `{Input i t} (p : parser i α)
+    (q : parser i β) `{!StrictParser q, !Parser p}
+  : parser i (list α) :=
+  cons <$> p <*> many (q *> p).

@@ -1,6 +1,9 @@
 From Coq Require Import String FunInd Recdef.
-From Prelude Require Import All.
+From Prelude Require Import All Text.
 From Comparse Require Import Monad.
+
+#[local]
+Open Scope text_scope.
 
 (** ** <<many>> *)
 
@@ -120,10 +123,10 @@ Definition optional `{Input i t} {α} (p : parser i α) : parser i (option α) :
 
 (** ** <<fail>> *)
 
-Definition fail `{Input i t} {α} (msg : string) : parser i α :=
+Definition fail {i α} (msg : text) : parser i α :=
   fun s => inl [msg].
 
-Instance fail_Parser : Parser (@fail i t H α msg).
+Instance fail_Parser `(Input i t) : Parser (@fail i α msg).
 
 Proof.
   constructor.
@@ -168,28 +171,57 @@ Definition ensure `{Input i t} {α} (p : parser i α) (cond : α -> bool) : pars
 
 (** ** <<token>> *)
 
-Definition token `{EquDec t, Input i t} (a : t) : parser i t :=
+Definition token `{EquDec t, I : Input i t} (a : t) : parser i t :=
   ensure read_token (equalb a).
 
 (** ** <<tag>> *)
 
-Fixpoint tag `{EquDec t, Input i t} (x : list t) : parser i unit :=
-  match x with
-  | x :: rst => do token x *> tag rst end
-  | [] => pure tt
+Function tag_aux (i t : Type) (Eq : Equality t) (E : @EquDec t Eq) (I : Input i t) (x : i) (input : i) {measure length x}
+  : error_stack + (unit * i) :=
+  match unpack input, unpack x with
+  | Some (c, rst), Some (c', rst') =>
+    if equalb c c'
+    then tag_aux i t Eq E I rst' rst
+    else inl ["nop"]
+  | _, None => inr (tt, input)
+  | _, _ => inl ["nop"]
   end.
 
-Instance tag_parser `(EquDec t, Input i t) (l : list t) : Parser (tag l).
+Proof.
+  intros i t Eq E I x input [x' input'] c' rst' equ1 equ2 [y rst] y' rst'' equ3 equ4 equ5.
+  inversion equ3; subst.
+  apply unpack_length in equ4.
+  rewrite equ4.
+  auto with arith.
+Defined.
+
+Definition tag `{E : EquDec t, I : Input i t} (x : i) : parser i unit :=
+  @tag_aux i t _ E I x.
+
+Instance tag_parser `(EquDec t, Input i t) : Parser (tag x).
 (* begin hide *)
 Proof.
-  induction l; typeclasses eauto.
+  intros x.
+  constructor.
+  intros input r output equ.
+  unfold tag in equ.
+  functional induction (tag_aux i t H H0 H1 x input).
+  + transitivity (length rst).
+    ++ now apply IHs.
+    ++ apply unpack_length in e.
+       rewrite e.
+       auto with arith.
+  + discriminate.
+  + inversion equ; subst.
+    auto with arith.
+  + discriminate.
 Qed.
 (* end hide *)
 
 (** [tag' x] is a variant of [tag x] which returns [x] and not [tt]. This can be
     useful used in conjunction of [<|>]. *)
 
-Definition tag' `{EquDec t, Input i t} (x : list t) : parser i (list t) :=
+Definition tag' `{EquDec t, Input i t} (x : i) : parser i i :=
   tag x *> pure x.
 
 (** ** <<many_until>> *)
@@ -207,7 +239,7 @@ Function many_until_aux (α β i t : Type) (I : Input i t)
   : error_stack + (list α * i) :=
   match q input with
   | inl _ => match p input with
-             | inl _ => inl ["p failed before q could succeed"%string]
+             | inl _ => inl ["p failed before q could succeed"]
              | inr (x, output) => many_until_aux α β i t I p H q output (x :: acc)
              end
   | inr (_, output) => inr (rev acc, output)
@@ -286,3 +318,48 @@ Definition sep {α β} `{Input i t} (p : parser i α)
     (q : parser i β) `{!StrictParser q, !Parser p}
   : parser i (list α) :=
   cons <$> p <*> many (q *> p).
+
+(** ** <<eoi>> *)
+
+Definition eoi `{Input i t} : parser i unit :=
+  fun input =>
+    match unpack input with
+    | None => inr (tt, input)
+    | Some (c, _) => inl ["Expected end of input, found " ++ token_to_text c]
+    end.
+
+Instance eoi_Parser `(Input i t) : Parser (eoi (i := i)).
+
+Proof.
+  constructor.
+  intros input res output Heq.
+  unfold eoi in Heq.
+  destruct (unpack input) as [[tok in']|]; cbn in *.
+  + discriminate.
+  + now inversion Heq.
+Qed.
+
+(** ** <<skip>> *)
+
+Definition skip {i α} (p : parser i α) : parser i unit :=
+  p *> pure tt.
+
+(** ** <<peek>> *)
+
+Definition peek {i α} (p : parser i α) : parser i α :=
+  fun input =>
+    match p input with
+    | inr (x, _) => inr (x, input)
+    | inl x => inl x
+    end.
+
+Instance peek_Parser `(Input i t) (a : Type) (p : parser i a) : Parser (peek p).
+
+Proof.
+  constructor.
+  intros input res output Heq.
+  unfold peek in Heq.
+  destruct (p input) as [err | [res' in']]; cbn in *.
+  + discriminate.
+  + now inversion Heq.
+Qed.

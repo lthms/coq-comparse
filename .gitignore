@@ -1,6 +1,7 @@
 Makefile
 Makefile.conf
 .coqdeps.d
+.Makefile.d
 
 .*.aux
 *.vo

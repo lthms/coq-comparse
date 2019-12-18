@@ -1,12 +1,15 @@
-From Coq Require Import String.
-From Prelude Require Import All.
+From Prelude Require Import All Text.
 
 (** * Definition *)
 
-Definition error_stack := list string.
+Definition error_stack := list text.
 
 Definition parser i α := state_t i (sum error_stack) α.
 
+(** We introduce a dedicated scope for the [parser] type. Note that this scope
+    is not compatible with the [alternative_scope] introduced by the
+    [Prelude.Control.Alternative] module. *)
+Declare Scope parser_scope.
 Bind Scope monad_scope with parser.
 
 (** * Type Classes *)
@@ -19,6 +22,8 @@ Class Input (i : Type) (t : Type) :=
   ; unpack_equ_1 (input : i) : length input = 0 <-> unpack input = None
   ; unpack_equ_2 (input : i) : 0 < length input <-> exists x output, unpack input = Some (x, output)
   ; unpack_length (input rst : i) (x : t) : unpack input = Some (x, rst) -> length input = S (length rst)
+  ; input_to_text (x : i) : text
+  ; token_to_text (x : t) : text
   }.
 
 Class Parser {i t α} `{Input i t} (p : parser i α) :=
@@ -88,7 +93,7 @@ Proof.
 Qed.
 
 Instance apply_parser `(H : Input i t, @Parser i t (α -> β) H f, @Parser i t α H p)
-  : Parser (f <*> p)| 10.
+  : Parser (f <*> p)|10.
 
 Proof.
   constructor.
@@ -111,7 +116,7 @@ Proof.
 Qed.
 
 Instance apply_strict_1 `(H : Input i t, @StrictParser i t (α -> β) H f, @Parser i t α H p)
-  : StrictParser (f <*> p)| 10.
+  : StrictParser (f <*> p)|10.
 
 Proof.
   constructor.
@@ -134,7 +139,7 @@ Proof.
 Qed.
 
 Instance apply_strict_2 `(H : Input i t, @Parser i t (α -> β) H f, @StrictParser i t α H p)
-  : StrictParser (f <*> p)| 15.
+  : StrictParser (f <*> p)|15.
 
 Proof.
   constructor.

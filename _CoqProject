@@ -2,4 +2,5 @@
 
 lib/Monad.v
 lib/Combinators.v
+lib/Text.v
 lib/Bytes.v

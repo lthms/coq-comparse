@@ -8,7 +8,7 @@ Definition rows : parser bytes (list bytes) := sep entry (token ","%byte).
 
 Definition csv : parser bytes (list (list bytes)) := sep rows (token x0a).
 
-Arguments csv _%bytes.
+Arguments csv !_%bytes.
 
 Time Eval vm_compute in do
   fst <$> csv ("aaa,aaaa,aaaaa\n" ++

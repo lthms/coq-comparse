@@ -136,7 +136,7 @@ Qed.
 (** ** <<read_token>> *)
 
 Definition read_token `{Input i t} : parser i t :=
-  do let* input <- get in
+  do let* input := get in
      match unpack input with
      | Some (x, rst) => put rst *> pure x
      | None => fail "expected character, found end of input"
@@ -163,7 +163,7 @@ Qed.
 (** ** <<ensure>> *)
 
 Definition ensure `{Input i t} {α} (p : parser i α) (cond : α -> bool) : parser i α :=
-  do let* res <- p in
+  do let* res := p in
      if cond res
      then pure res
      else fail "ensure: result of p is not valid according to cond"

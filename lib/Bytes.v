@@ -59,7 +59,7 @@ Proof.
   + discriminate.
   + rewrite tag_aux_equation in equ.
     cbn in equ.
-    destruct Byte.eqb.
+    destruct byte_equb.
     ++ eapply PeanoNat.Nat.le_lt_trans.
        +++ eapply is_parser in equ.
            exact equ.

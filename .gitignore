@@ -4,7 +4,10 @@ Makefile.conf
 .Makefile.d
 
 .*.aux
+*.vok
+*.vos
 *.vo
 *.glob
+.lia.cache
 
 html/

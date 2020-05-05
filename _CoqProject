@@ -1,6 +1,6 @@
--Q lib Comparse
+-Q theories Comparse
 
-lib/Monad.v
-lib/Combinators.v
-lib/Text.v
-lib/Bytes.v
+theories/Monad.v
+theories/Combinators.v
+theories/Text.v
+theories/Bytes.v

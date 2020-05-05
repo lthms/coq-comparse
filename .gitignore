@@ -11,3 +11,5 @@ Makefile.conf
 .lia.cache
 
 html/
+
+_build

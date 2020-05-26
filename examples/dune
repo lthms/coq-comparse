@@ -1,0 +1,8 @@
+(coq.extraction
+  (prelude csv)
+  (theories Comparse)
+  (extracted_modules csv))
+
+(executable
+  (libraries unix)
+  (name csv))

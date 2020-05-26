@@ -1,16 +1,21 @@
-From Prelude Require Import All Text.
+From ExtLib Require Export MonadState StateMonad Functor Applicative Monad EitherMonad.
+From Coq Require Export String.
+
+Export FunctorNotation.
+Export ApplicativeNotation.
+Export MonadBaseNotation.
+
+Open Scope monad_scope.
+
+Generalizable All Variables.
 
 (** * Definition *)
 
-Definition error_stack := list text.
+Definition error_stack := list string.
 
-Definition parser i α := state_t i (sum error_stack) α.
+Notation parser i := (stateT i (sum error_stack)).
 
-(** We introduce a dedicated scope for the [parser] type. Note that this scope
-    is not compatible with the [alternative_scope] introduced by the
-    [Prelude.Control.Alternative] module. *)
 Declare Scope parser_scope.
-Bind Scope monad_scope with parser.
 
 (** * Type Classes *)
 
@@ -19,21 +24,21 @@ Bind Scope monad_scope with parser.
 Class Input (i : Type) (t : Type) :=
   { length (x : i) : nat
   ; unpack (x : i) : option (t * i)
-  ; unpack_equ_1 (input : i) : length input = 0 <-> unpack input = None
-  ; unpack_equ_2 (input : i) : 0 < length input <-> exists x output, unpack input = Some (x, output)
+  ; unpack_equ_1 (input : i) : length input = 0%nat <-> unpack input = None
+  ; unpack_equ_2 (input : i) : (0 < length input)%nat <-> exists x output, unpack input = Some (x, output)
   ; unpack_length (input rst : i) (x : t) : unpack input = Some (x, rst) -> length input = S (length rst)
-  ; input_to_text (x : i) : text
-  ; token_to_text (x : t) : text
+  ; input_to_text (x : i) : string
+  ; token_to_text (x : t) : string
   }.
 
 Class Parser {i t α} `{Input i t} (p : parser i α) :=
   { is_parser (input : i) : forall (x : α) (output : i),
-      p input = inr (x, output) -> length output <= length input
+      runStateT p input = inr (x, output) -> (length output <= length input)%nat
   }.
 
 Class StrictParser {i t α} `{Input i t} (p : parser i α) :=
   { is_strict (input : i) : forall (x : α) (output : i),
-      p input = inr (x, output) -> length output < length input
+      runStateT p input = inr (x, output) -> (length output < length input)%nat
   }.
 
 (** ** Instances *)
@@ -58,11 +63,11 @@ Proof.
   constructor.
   intros input x output.
   cbn.
-  case_eq (p input).
+  case_eq (runStateT p input).
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.
-    inversion equ'; ssubst.
+    inversion equ'; subst.
     now apply is_parser in equ.
 Qed.
 
@@ -73,11 +78,11 @@ Proof.
   constructor.
   intros input x output.
   cbn.
-  case_eq (p input).
+  case_eq (runStateT p input).
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.
-    inversion equ'; ssubst.
+    inversion equ'; subst.
     now apply is_strict in equ.
 Qed.
 
@@ -99,11 +104,11 @@ Proof.
   constructor.
   intros input x output.
   cbn.
-  case_eq (f input).
+  case_eq (runStateT f input).
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.
-    case_eq (p output').
+    case_eq (runStateT p output').
     ++ intros e equ''.
        now rewrite equ'' in equ'.
     ++ intros [z output''] equ''.
@@ -122,11 +127,11 @@ Proof.
   constructor.
   intros input x output.
   cbn.
-  case_eq (f input).
+  case_eq (runStateT f input).
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.
-    case_eq (p output').
+    case_eq (runStateT p output').
     ++ intros e equ''.
        now rewrite equ'' in equ'.
     ++ intros [z output''] equ''.
@@ -145,11 +150,11 @@ Proof.
   constructor.
   intros input x output.
   cbn.
-  case_eq (f input).
+  case_eq (runStateT f input).
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.
-    case_eq (p output').
+    case_eq (runStateT p output').
     ++ intros e equ''.
        now rewrite equ'' in equ'.
     ++ intros [z output''] equ''.
@@ -170,7 +175,7 @@ Proof.
   constructor.
   intros input x output.
   cbn.
-  case_eq (p input).
+  case_eq (runStateT p input).
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.
@@ -196,7 +201,7 @@ Proof.
   constructor.
   intros input x output.
   cbn.
-  case_eq (p input).
+  case_eq (runStateT p input).
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.
@@ -213,7 +218,7 @@ Proof.
   constructor.
   intros input x output.
   cbn.
-  case_eq (p input).
+  case_eq (runStateT p input).
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.

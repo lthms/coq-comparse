@@ -1,17 +1,24 @@
-From Prelude Require Import All Bytes.
-From Comparse Require Import Monad Combinators Bytes.
+From Comparse Require Import Monad Combinators.
+From Coq Require Import Ascii String.
+From ExtLib Require Import Char.
 
-(* TODO: use a more relevant entry format *)
-Definition entry : parser bytes bytes := wrap_bytes <$> many (token "a"%byte).
+Import AsciiSyntax.
 
-Definition rows : parser bytes (list bytes) := sep entry (token ","%byte).
+Generalizable All Variables.
 
-Definition csv : parser bytes (list (list bytes)) := sep rows (token x0a).
+Definition entry `{Input string ascii} : parser string (list ascii) :=
+  many_until read_token
+             (peek ((token ","%char;; pure tt)
+                         <|> (token "010"%char;; pure tt)
+                         <|> eoi)).
 
-Arguments csv !_%bytes.
+Definition rows `{Input string ascii}
+  : parser string (list (list ascii)) :=
+  sep entry (token ","%char).
 
-Time Eval vm_compute in do
-  fst <$> csv ("aaa,aaaa,aaaaa\n" ++
-               ",,aaaaa,\n"       ++
-               "aa,a")
-end.
+Definition csv `{Input string ascii}
+  : parser string (list (list (list ascii))) :=
+  sep rows (token "010"%char).
+
+From Coq Require Extraction.
+Extraction "csv.ml" csv.

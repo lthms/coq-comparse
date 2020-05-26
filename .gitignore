@@ -9,6 +9,7 @@ Makefile.conf
 *.vo
 *.glob
 .lia.cache
+.merlin
 
 html/
 

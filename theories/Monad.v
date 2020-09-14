@@ -22,30 +22,32 @@ Declare Scope parser_scope.
 (** ** Definition *)
 
 Class Input (i : Type) (t : Type) :=
-  { length (x : i) : nat
-  ; unpack (x : i) : option (t * i)
-  ; unpack_equ_1 (input : i) : length input = 0%nat <-> unpack input = None
-  ; unpack_equ_2 (input : i) : (0 < length input)%nat <-> exists x output, unpack input = Some (x, output)
-  ; unpack_length (input rst : i) (x : t) : unpack input = Some (x, rst) -> length input = S (length rst)
-  ; input_to_text (x : i) : string
-  ; token_to_text (x : t) : string
+  { unpack (x : i) : option (t * i)
+  ; input_to_string (x : i) : string
+  ; token_to_string (x : t) : string
   }.
 
-Class Parser {i t α} `{Input i t} (p : parser i α) :=
+Class InputLaws (i : Type) (t : Type) (len : i -> nat) `{Input i t} : Prop :=
+  { unpack_equ_1 (input : i) : len input = 0%nat <-> unpack input = None
+  ; unpack_equ_2 (input : i) : (0 < len input)%nat <-> exists x output, unpack input = Some (x, output)
+  ; unpack_len (input rst : i) (x : t) : unpack input = Some (x, rst) -> len input = S (len rst)
+  }.
+
+Class Parser {i t α} (len : i -> nat) `{InputLaws i t len} (p : parser i α) : Prop :=
   { is_parser (input : i) : forall (x : α) (output : i),
-      runStateT p input = inr (x, output) -> (length output <= length input)%nat
+      runStateT p input = inr (x, output) -> (len output <= len input)%nat
   }.
 
-Class StrictParser {i t α} `{Input i t} (p : parser i α) :=
+Class StrictParser {i t α} (len : i -> nat) `{InputLaws i t len} (p : parser i α) : Prop :=
   { is_strict (input : i) : forall (x : α) (output : i),
-      runStateT p input = inr (x, output) -> (length output < length input)%nat
+      runStateT p input = inr (x, output) -> (len output < len input)%nat
   }.
 
 (** ** Instances *)
 
 (** *** Reflexivity *)
 
-Instance strict_parser `(StrictParser i t α p) : Parser p.
+Instance strict_parser `(StrictParser i t α len p) : Parser len p.
 
 Proof.
   constructor.
@@ -56,8 +58,8 @@ Qed.
 
 (** *** Functor *)
 
-Instance map_parser {i α β} (f : α -> β) `(Parser i t α p)
-  : Parser (f <$> p).
+Instance map_parser {i α β} (len : i -> nat) (f : α -> β) `(Parser i t α len p)
+  : Parser len (f <$> p).
 
 Proof.
   constructor.
@@ -71,8 +73,8 @@ Proof.
     now apply is_parser in equ.
 Qed.
 
-Instance map_strict {i t α β} (f : α -> β) `(StrictParser i t α p)
-  : StrictParser (f <$> p).
+Instance map_strict {i t α β} (f : α -> β) `(StrictParser i t α len p)
+  : StrictParser len (f <$> p).
 
 Proof.
   constructor.
@@ -88,7 +90,7 @@ Qed.
 
 (** *** Applicative *)
 
-Instance pure_Parser : @Parser i t α H (pure x).
+Instance pure_Parser : @Parser i t α H H1 len (pure x).
 
 Proof.
   intros i t α H x.
@@ -97,8 +99,9 @@ Proof.
   now inversion equ; subst.
 Qed.
 
-Instance apply_parser `(H : Input i t, @Parser i t (α -> β) H f, @Parser i t α H p)
-  : Parser (f <*> p)|10.
+Instance apply_parser
+   `(H : Input i t, @Parser i t (α -> β) len H H1 f, @Parser i t α len H H1 p)
+  : Parser len (f <*> p)|10.
 
 Proof.
   constructor.
@@ -115,13 +118,14 @@ Proof.
        rewrite equ'' in equ'.
        cbn in equ'.
        inversion equ'; subst.
-       transitivity (length output').
+       transitivity (len output').
        +++ now apply is_parser in equ''.
        +++ now apply is_parser in equ.
 Qed.
 
-Instance apply_strict_1 `(H : Input i t, @StrictParser i t (α -> β) H f, @Parser i t α H p)
-  : StrictParser (f <*> p)|10.
+Instance apply_strict_1
+   `(H : Input i t, @StrictParser i t (α -> β) len H H1 f, @Parser i t α len H H1 p)
+  : StrictParser len (f <*> p)|10.
 
 Proof.
   constructor.
@@ -138,13 +142,14 @@ Proof.
        rewrite equ'' in equ'.
        cbn in equ'.
        inversion equ'; subst.
-       apply PeanoNat.Nat.le_lt_trans with (m := length output').
+       apply PeanoNat.Nat.le_lt_trans with (m := len output').
        +++ now apply is_parser in equ''.
        +++ now apply is_strict in equ.
 Qed.
 
-Instance apply_strict_2 `(H : Input i t, @Parser i t (α -> β) H f, @StrictParser i t α H p)
-  : StrictParser (f <*> p)|15.
+Instance apply_strict_2
+   `(H : Input i t, @Parser i t (α -> β) len H H1 f, @StrictParser i t α len H H1 p)
+  : StrictParser len (f <*> p)|15.
 
 Proof.
   constructor.
@@ -161,15 +166,15 @@ Proof.
        rewrite equ'' in equ'.
        cbn in equ'.
        inversion equ'; subst.
-       eapply PeanoNat.Nat.lt_le_trans with (m := length output').
+       eapply PeanoNat.Nat.lt_le_trans with (m := len output').
        +++ now apply is_strict in equ''.
        +++ now apply is_parser in equ.
 Qed.
 
 (** *** Monad *)
 
-Instance bind_parser `(Parser i t α p, (forall x, @Parser i t β _ (f x)))
-  : Parser (p >>= f).
+Instance bind_parser `(Parser i t α len p, (forall x, @Parser i t β len _ _ (f x)))
+  : Parser len (p >>= f).
 
 Proof.
   constructor.
@@ -179,7 +184,7 @@ Proof.
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.
-    specialize H1 with y.
+    specialize H2 with y.
     apply is_parser in equ.
     apply is_parser in equ'.
     etransitivity; eauto.
@@ -194,8 +199,9 @@ Qed.
     [bind] first.  This way, the parser is explored from the beginning of the
     parser up to the end, and not the other way around. *)
 
-Instance bind_strict_1 `(StrictParser i t α p, (forall x, @Parser i t β _ (f x)))
-  : StrictParser (p >>= f)|10.
+Instance bind_strict_1
+   `(StrictParser i t α len p, (forall x, @Parser i t β len _ _ (f x)))
+  : StrictParser len (p >>= f)|10.
 
 Proof.
   constructor.
@@ -205,14 +211,15 @@ Proof.
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.
-    specialize H1 with y.
+    specialize H2 with y.
     apply is_strict in equ.
     apply is_parser in equ'.
     eapply PeanoNat.Nat.le_lt_trans; eauto.
 Qed.
 
-Instance bind_strict_2 `(Parser i t α p, (forall x, @StrictParser i t β _ (f x)))
-  : StrictParser (p >>= f)|15.
+Instance bind_strict_2
+  `(Parser i t α len p, (forall x, @StrictParser i t β len _ _ (f x)))
+  : StrictParser len (p >>= f)|15.
 
 Proof.
   constructor.
@@ -222,7 +229,7 @@ Proof.
   + now intros.
   + intros [y output'] equ equ'.
     cbn in equ'.
-    specialize H1 with y.
+    specialize H2 with y.
     apply is_parser in equ.
     apply is_strict in equ'.
     eapply PeanoNat.Nat.lt_le_trans; eauto.
@@ -230,8 +237,10 @@ Qed.
 
 (** *** Conditional Branching *)
 
-Instance if_parser `(H : Input i t, @Parser i t α H p, @Parser i t α H q) (cond : bool)
-  : Parser (if cond then p else q).
+Instance if_parser
+   `(H : Input i t, @Parser i t α len H H1 p, @Parser i t α len H H1 q)
+    (cond : bool)
+  : Parser len (if cond then p else q).
 
 Proof.
   constructor.
@@ -240,8 +249,10 @@ Proof.
     now apply is_parser in equ.
 Qed.
 
-Instance if_strict `(H : Input i t, @StrictParser i t α H p, @StrictParser i t α H q) (cond : bool)
-  : StrictParser (if cond then p else q).
+Instance if_strict
+   `(H : Input i t, @StrictParser i t α len H H1 p, @StrictParser i t α len H H1 q)
+    (cond : bool)
+  : StrictParser len (if cond then p else q).
 
 Proof.
   constructor.

@@ -6,7 +6,28 @@ Import AsciiSyntax.
 
 Generalizable All Variables.
 
-Definition entry `{Input string ascii} : parser string (list ascii) :=
+Instance string_Input : Input string ascii :=
+  { unpack := fun x => match x with
+                       | EmptyString => None
+                       | String c rst => Some (c, rst)
+                       end
+  ; input_to_string := id
+  ; token_to_string := Basics.flip String EmptyString
+  }.
+
+#[program]
+Instance string_InputLaws : InputLaws string ascii String.length := {}.
+
+Next Obligation.
+Admitted.
+
+Next Obligation.
+Admitted.
+
+Next Obligation.
+Admitted.
+
+Definition entry : parser string (list ascii) :=
   many_until read_token
              (peek ((token ","%char;; pure tt)
                          <|> (token "010"%char;; pure tt)
@@ -20,5 +41,4 @@ Definition csv `{Input string ascii}
   : parser string (list (list (list ascii))) :=
   sep rows (token "010"%char).
 
-From Coq Require Extraction.
 Extraction "csv.ml" csv.

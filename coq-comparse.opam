@@ -1,0 +1,9 @@
+opam-version: "2.0"
+version: "1.0.0+dev"
+synopsis: "Your companion toolkit to write parser combinators"
+authors: ["Thomas Letan <thomas.letan@ssi.gouv.fr>"]
+maintainer: ["Thomas Letan <thomas.letan@ssi.gouv.fr>"]
+build: ["dune" "build" -p name "-j" jobs]
+homepage: "https://anssi-fr.github.iocom/coq-comparse"
+bug-reports: "https://github.com/ANSSI-FR/coq-comparse/issues"
+license: "GPL-3.0"

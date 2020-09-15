@@ -19,13 +19,29 @@ Instance string_Input : Input string ascii :=
 Instance string_InputLaws : InputLaws string ascii String.length := {}.
 
 Next Obligation.
-Admitted.
+  induction input; now split.
+Qed.
 
 Next Obligation.
-Admitted.
+  destruct input.
+  + cbn; split.
+    ++ intros falso.
+       inversion falso.
+    ++ intros [x [output equ]].
+       discriminate.
+  + split.
+    ++ intros _.
+       now exists a, input.
+    ++ intros _.
+       apply PeanoNat.Nat.lt_0_succ.
+Qed.
 
 Next Obligation.
-Admitted.
+  destruct input.
+  + discriminate.
+  + inversion H; subst.
+    reflexivity.
+Qed.
 
 Definition entry : parser string (list ascii) :=
   many_until read_token

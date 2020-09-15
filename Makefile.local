@@ -1,0 +1,1 @@
+COQDOCEXTRAFLAGS := --external https://coq-community.org/coq-ext-lib/v0.11.2/ ExtLib

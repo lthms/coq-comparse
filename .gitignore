@@ -6,10 +6,14 @@ Makefile.conf
 .*.aux
 *.vok
 *.vos
+*.vio
 *.vo
 *.glob
 .lia.cache
 .merlin
+
+csv.ml
+csv.mli
 
 html/
 

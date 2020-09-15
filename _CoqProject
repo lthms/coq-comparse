@@ -2,5 +2,3 @@
 
 theories/Monad.v
 theories/Combinators.v
-theories/Text.v
-theories/Bytes.v

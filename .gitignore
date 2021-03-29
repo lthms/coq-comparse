@@ -18,3 +18,4 @@ csv.mli
 html/
 
 _build
+_opam

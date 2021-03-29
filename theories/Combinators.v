@@ -144,7 +144,7 @@ Definition optional {i α} (p : parser i α) : parser i (option α) :=
 Definition fail {i α} (msg : string) : parser i α :=
   mkStateT (fun s => inl [msg]).
 
-Instance fail_Parser `(InputLaws i t len) : Parser len (@fail i α msg).
+Instance fail_Parser `(InputLaws i t len) : `{Parser len (@fail i α msg)}.
 
 Proof.
   constructor.
@@ -224,7 +224,7 @@ Definition tag `{RelDec t eqv, InputLaws i t len} (x : i) : parser i unit :=
 
 Extraction Implicit tag [len].
 
-Instance tag_parser `(RelDec t eqv, InputLaws i t len) : Parser len (tag x).
+Instance tag_parser `(RelDec t eqv, InputLaws i t len) : `{Parser len (tag x)}.
 
 Proof.
   intros x.

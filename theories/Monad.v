@@ -90,7 +90,7 @@ Qed.
 
 (** *** Applicative *)
 
-Instance pure_Parser : @Parser i t α H H1 len (pure x).
+Instance pure_Parser : `{@Parser i t α H H1 len (pure x)}.
 
 Proof.
   intros i t α H x.

@@ -13,3 +13,8 @@ features.
 ```
 opam switch create . ocaml-base-compiler.4.12.0 --repositories default,coq-released
 ```
+
+## Examples
+
+- [MiniHTTPServer](https://github.com/lthms/coq-MiniHTTPServer), a
+  minimalist, certified HTTP server mostly written in Coq

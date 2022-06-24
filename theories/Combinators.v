@@ -10,6 +10,8 @@ Generalizable All Variables.
 Open Scope parser_scope.
 Open Scope monad_scope.
 
+#[local] Existing Instance Monad_stateT.
+
 (** ** <<many>> *)
 
 (** [many p] tries to apply a _strict_ parser [p] as long as [p] succeeds, then

@@ -6,6 +6,8 @@ Import AsciiSyntax.
 
 Generalizable All Variables.
 
+#[local] Existing Instance Monad_stateT.
+
 Instance string_Input : Input string ascii :=
   { unpack := fun x => match x with
                        | EmptyString => None

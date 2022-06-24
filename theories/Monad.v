@@ -9,6 +9,8 @@ Open Scope monad_scope.
 
 Generalizable All Variables.
 
+#[local] Existing Instance Monad_stateT.
+
 (** * Definition *)
 
 Definition error_stack := list string.
